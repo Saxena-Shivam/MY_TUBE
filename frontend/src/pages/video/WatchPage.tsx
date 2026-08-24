@@ -21,7 +21,8 @@ import { useAuth } from "../../context/AuthContext";
 import { subscriptionService } from "../../services/subscription.service";
 
 function getVideoUrl(video: Video) {
-  return video.videofile || video.videoFile || video.videoUrl || null;
+  const candidate = video.videofile || video.videoFile || video.videoUrl;
+  return typeof candidate === "string" && candidate.trim() ? candidate : null;
 }
 
 export function WatchPage() {
@@ -128,7 +129,8 @@ export function WatchPage() {
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-white/70">
-              This video has no playable media URL.
+              This older upload has no saved video file. Upload the video again
+              to make it playable.
             </div>
           )}
           <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-slate-950/80 px-3 py-1.5 text-xs text-white">
