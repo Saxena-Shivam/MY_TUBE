@@ -1,0 +1,30 @@
+{
+  "name": "mytube",
+  "version": "1.0.0",
+  "description": "A Clone of twitter and Youtube",
+  "license": "ISC",
+  "author": "Shivam Saxena",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "prettier": "^3.9.6"
+  },
+  "dependencies": {
+    "@ffprobe-installer/ffprobe": "^2.1.2",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.10.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "get-video-duration": "^5.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.3",
+    "mongoose-aggregate-paginate-v2": "^1.1.5",
+    "multer": "^2.2.0"
+  }
+}
