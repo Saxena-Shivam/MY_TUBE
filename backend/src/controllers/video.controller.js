@@ -7,7 +7,7 @@ import { Playlist } from "../models/playlist.model.js";
 import { Subscription } from "../models/subscription.model.js";
 import { WatchHistory } from "../models/watchHistory.model.js";
 import { Notification } from "../models/notification.model.js";
-import { ApiError } from "../utils/ApiError.js";
+import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
