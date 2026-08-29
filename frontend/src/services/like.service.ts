@@ -2,9 +2,10 @@ import api from "../api/axios";
 import type { ApiResponse, Video } from "../types";
 
 export const likeService = {
-  toggleVideo: async (videoId: string) => {
+  toggleVideo: async (videoId: string, reaction: "like" | "unlike") => {
     const response = await api.post<ApiResponse<unknown>>(
       `/likes/toggle/v/${videoId}`,
+      { reaction },
     );
     return response.data;
   },
@@ -14,9 +15,10 @@ export const likeService = {
     );
     return response.data;
   },
-  toggleTweet: async (tweetId: string) => {
+  toggleTweet: async (tweetId: string, reaction: "like" | "unlike") => {
     const response = await api.post<ApiResponse<unknown>>(
       `/likes/toggle/t/${tweetId}`,
+      { reaction },
     );
     return response.data;
   },

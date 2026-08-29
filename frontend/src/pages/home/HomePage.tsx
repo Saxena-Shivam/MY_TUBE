@@ -1,35 +1,62 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Flame } from "lucide-react";
+import {
+  Flame,
+  Newspaper,
+  ChevronRight,
+  ChevronLeft,
+  RefreshCw,
+} from "lucide-react";
 import { videoService } from "../../services/video.service";
+import { newsService, type NewsItem } from "../../services/news.service";
 import { tweetService } from "../../services/tweet.service";
 import type { Tweet, Video } from "../../types";
 import { EmptyState } from "../../components/common/EmptyState";
 import { SkeletonBox } from "../../components/common/Loader";
 import { VideoCard } from "../../components/video/VideoCard";
-import { TweetCard } from "../../components/tweet/TweetCard";
-import { TweetComposer } from "../../components/tweet/TweetComposer";
 import { SaveToPlaylistModal } from "../../components/playlist/SaveToPlaylistModal";
-import { useAuth } from "../../context/AuthContext";
 import { userService } from "../../services/user.service";
 import type { User } from "../../types";
 import { Link } from "react-router-dom";
+import { getApiErrorMessage } from "../../api/axios";
+import { TweetCard } from "../../components/tweet/TweetCard";
+import { TweetComposer } from "../../components/tweet/TweetComposer";
+import { useAuth } from "../../context/AuthContext";
 
 export function HomePage() {
   const [searchParams] = useSearchParams();
   const [videos, setVideos] = useState<Video[]>([]);
   const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [newsIndex, setNewsIndex] = useState(0);
   const [channels, setChannels] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newsLoading, setNewsLoading] = useState(false);
   const [error, setError] = useState("");
   const [saveVideo, setSaveVideo] = useState<Video | null>(null);
   const { isAuthenticated } = useAuth();
-
   const query = searchParams.get("query") ?? "";
+
+  const refreshNews = async () => {
+    setNewsLoading(true);
+    try {
+      const response = await newsService.get();
+      const nextNews = Array.isArray(response.data) ? response.data : [];
+      setNews(nextNews);
+      setNewsIndex((current) =>
+        nextNews.length ? (current + 1) % nextNews.length : 0,
+      );
+    } catch {
+      setNews([]);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchFeed = async () => {
       setLoading(true);
+      setError("");
       try {
         const [videosRes, tweetsRes, usersRes] = await Promise.allSettled([
           videoService.getAll({
@@ -43,13 +70,20 @@ export function HomePage() {
         ]);
         if (videosRes.status === "fulfilled") {
           setVideos(
-            (videosRes.value.data.videos || []).filter(
+            (videosRes.value.data?.videos || []).filter(
               (video): video is Video => Boolean(video?._id),
             ),
           );
         } else {
-          setError("Unable to load videos right now.");
+          setError(
+            getApiErrorMessage(
+              videosRes.reason,
+              "Unable to load videos right now.",
+            ),
+          );
         }
+        if (usersRes.status === "fulfilled")
+          setChannels(usersRes.value.data || []);
         if (tweetsRes.status === "fulfilled") {
           setTweets(
             (tweetsRes.value.data || []).filter((tweet): tweet is Tweet =>
@@ -57,10 +91,11 @@ export function HomePage() {
             ),
           );
         }
-        if (usersRes.status === "fulfilled")
-          setChannels(usersRes.value.data || []);
-      } catch {
-        setError("Unable to load videos right now.");
+        void refreshNews();
+      } catch (requestError) {
+        setError(
+          getApiErrorMessage(requestError, "Unable to load videos right now."),
+        );
       } finally {
         setLoading(false);
       }
@@ -78,14 +113,8 @@ export function HomePage() {
   }
 
   return (
-    <div className="space-y-8 pb-16">
-      {isAuthenticated && (
-        <TweetComposer
-          onCreated={(tweet) => setTweets((prev) => [tweet, ...prev])}
-        />
-      )}
-
-      <section>
+    <div className="flex flex-col gap-8 pb-16">
+      <section className="order-2">
         <div className="mb-4 flex items-center gap-2">
           <Flame className="h-5 w-5 text-orange-500" />
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
@@ -120,7 +149,108 @@ export function HomePage() {
         )}
       </section>
 
-      <section>
+      <section className="order-1">
+        <div className="mb-8 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-xl font-bold">
+              <Newspaper className="h-5 w-5 text-red-600" /> News
+            </h2>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                aria-label="Refresh news"
+                onClick={() => void refreshNews()}
+                disabled={newsLoading}
+                className="rounded-full p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${newsLoading ? "animate-spin" : ""}`}
+                />
+              </button>
+              <button
+                type="button"
+                aria-label="Previous news"
+                disabled={news.length === 0}
+                onClick={() =>
+                  setNewsIndex(
+                    (current) => (current - 1 + news.length) % news.length,
+                  )
+                }
+                className="rounded-full p-2 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-800"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next news"
+                disabled={news.length === 0}
+                onClick={() =>
+                  setNewsIndex((current) => (current + 1) % news.length)
+                }
+                className="rounded-full p-2 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-800"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          {newsLoading && news.length === 0 ? (
+            <p className="text-sm text-slate-500">Loading news...</p>
+          ) : news.length > 0 ? (
+            <a
+              href={news[newsIndex].url}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-2xl bg-slate-50 p-4 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700"
+            >
+              <h3 className="font-semibold">{news[newsIndex].title}</h3>
+              <p className="mt-2 text-xs text-slate-500">
+                {news[newsIndex].by}
+              </p>
+            </a>
+          ) : (
+            <p className="text-sm text-slate-500">
+              News is temporarily unavailable.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="order-3">
+        {isAuthenticated && (
+          <TweetComposer
+            onCreated={(tweet) => setTweets((current) => [tweet, ...current])}
+          />
+        )}
+        <div className="mt-8">
+          <h2 className="mb-4 text-xl font-bold">Community posts</h2>
+          {tweets.length === 0 ? (
+            <EmptyState
+              title="No posts yet"
+              description="Creators can share updates here."
+            />
+          ) : (
+            <div className="mx-auto max-w-3xl space-y-4">
+              {tweets.map((tweet) => (
+                <TweetCard
+                  key={tweet._id}
+                  tweet={tweet}
+                  onDeleted={(id) =>
+                    setTweets((current) =>
+                      current.filter((item) => item._id !== id),
+                    )
+                  }
+                  onUpdated={(next) =>
+                    setTweets((current) =>
+                      current.map((item) =>
+                        item._id === next._id ? next : item,
+                      ),
+                    )
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
         {query && channels.length > 0 && (
           <div className="mb-8">
             <h2 className="mb-4 text-xl font-bold">Channels</h2>
@@ -145,32 +275,6 @@ export function HomePage() {
                 </Link>
               ))}
             </div>
-          </div>
-        )}
-        <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-white">
-          Community posts
-        </h2>
-        {tweets.length === 0 ? (
-          <EmptyState
-            title="No posts yet"
-            description="Creators can share updates, and they will appear here."
-          />
-        ) : (
-          <div className="mx-auto max-w-3xl space-y-4">
-            {tweets.map((tweet) => (
-              <TweetCard
-                key={tweet._id}
-                tweet={tweet}
-                onDeleted={(id) =>
-                  setTweets((prev) => prev.filter((item) => item._id !== id))
-                }
-                onUpdated={(next) =>
-                  setTweets((prev) =>
-                    prev.map((item) => (item._id === next._id ? next : item)),
-                  )
-                }
-              />
-            ))}
           </div>
         )}
       </section>

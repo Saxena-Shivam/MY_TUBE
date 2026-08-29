@@ -1,0 +1,345 @@
+{
+  "info": {
+    "name": "MYTUBE API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Route collection for the MYTUBE Express API. Set baseUrl and accessToken variables before running protected requests."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "videoId", "value": "" },
+    { "key": "tweetId", "value": "" },
+    { "key": "playlistId", "value": "" },
+    { "key": "commentId", "value": "" },
+    { "key": "notificationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": { "method": "GET", "url": "{{baseUrl}}/healthcheck" }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/register",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "fullName", "value": "Demo User", "type": "text" },
+                { "key": "username", "value": "demo_user", "type": "text" },
+                { "key": "email", "value": "demo@example.com", "type": "text" },
+                { "key": "password", "value": "password", "type": "text" },
+                { "key": "avatar", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"demo@example.com\",\"password\":\"password\"}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/users/current-user"
+          }
+        },
+        {
+          "name": "Search users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/search?query=demo"
+          }
+        },
+        {
+          "name": "Channel profile",
+          "request": { "method": "GET", "url": "{{baseUrl}}/users/c/demo_user" }
+        },
+        {
+          "name": "Update account",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/users/update-account"
+          }
+        },
+        {
+          "name": "Update avatar",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/users/avatar"
+          }
+        },
+        {
+          "name": "Update cover",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/users/cover-image"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Videos",
+      "item": [
+        {
+          "name": "List/search videos",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/videos?query=topic&limit=12"
+          }
+        },
+        {
+          "name": "Trending",
+          "request": { "method": "GET", "url": "{{baseUrl}}/videos/trending" }
+        },
+        {
+          "name": "Video by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/videos/{{videoId}}"
+          }
+        },
+        {
+          "name": "Record view",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/videos/view/{{videoId}}"
+          }
+        },
+        {
+          "name": "Upload video",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/videos"
+          }
+        },
+        {
+          "name": "Delete video",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/videos/{{videoId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tweets and comments",
+      "item": [
+        {
+          "name": "List tweets",
+          "request": { "method": "GET", "url": "{{baseUrl}}/tweets" }
+        },
+        {
+          "name": "Create tweet",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/tweets"
+          }
+        },
+        {
+          "name": "Delete tweet",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/tweets/{{tweetId}}"
+          }
+        },
+        {
+          "name": "Video comments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/comments/video/{{videoId}}"
+          }
+        },
+        {
+          "name": "Tweet comments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/comments/tweet/{{tweetId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Likes, subscriptions, playlists, history, notifications",
+      "item": [
+        {
+          "name": "Toggle video reaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/likes/toggle/v/{{videoId}}"
+          }
+        },
+        {
+          "name": "Toggle tweet reaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/likes/toggle/t/{{tweetId}}"
+          }
+        },
+        {
+          "name": "Liked videos",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/likes/videos"
+          }
+        },
+        {
+          "name": "Toggle subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/subscriptions/c/{{userId}}"
+          }
+        },
+        {
+          "name": "List playlists",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/playlists/user/{{userId}}"
+          }
+        },
+        {
+          "name": "Playlist by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/playlists/{{playlistId}}"
+          }
+        },
+        {
+          "name": "Add video to playlist",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/playlists/add/{{videoId}}/{{playlistId}}"
+          }
+        },
+        {
+          "name": "Remove video from playlist",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/playlists/remove/{{videoId}}/{{playlistId}}"
+          }
+        },
+        {
+          "name": "Get history",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/history"
+          }
+        },
+        {
+          "name": "Remove history item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/history/{{videoId}}"
+          }
+        },
+        {
+          "name": "Clear history",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/history"
+          }
+        },
+        {
+          "name": "Get notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/notifications"
+          }
+        },
+        {
+          "name": "Mark all notifications read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all"
+          }
+        },
+        {
+          "name": "Clear notifications",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/notifications"
+          }
+        }
+      ]
+    }
+  ]
+}

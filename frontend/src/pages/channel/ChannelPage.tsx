@@ -19,6 +19,7 @@ import { EmptyState } from "../../components/common/EmptyState";
 import { SkeletonBox } from "../../components/common/Loader";
 import { VideoCard } from "../../components/video/VideoCard";
 import { TweetCard } from "../../components/tweet/TweetCard";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { useAuth } from "../../context/AuthContext";
 import { btnPrimary, btnSecondary, formatCount } from "../../lib/utils";
 
@@ -30,6 +31,7 @@ export function ChannelPage() {
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [deleteVideo, setDeleteVideo] = useState<VideoType | null>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const subLock = useRef(false);
@@ -224,7 +226,11 @@ export function ChannelPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {videos.map((video) => (
-                <VideoCard key={video._id} video={video} />
+                <VideoCard
+                  key={video._id}
+                  video={video}
+                  onDelete={isOwner ? setDeleteVideo : undefined}
+                />
               ))}
             </div>
           )}
@@ -252,6 +258,25 @@ export function ChannelPage() {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={Boolean(deleteVideo)}
+        title="Delete this video?"
+        description="This video and its related references will be removed."
+        onClose={() => setDeleteVideo(null)}
+        onConfirm={async () => {
+          if (!deleteVideo) return;
+          try {
+            await videoService.delete(deleteVideo._id);
+            setVideos((current) =>
+              current.filter((video) => video._id !== deleteVideo._id),
+            );
+            setDeleteVideo(null);
+            toast.success("Video deleted");
+          } catch (error) {
+            toast.error(getApiErrorMessage(error, "Could not delete video"));
+          }
+        }}
+      />
     </div>
   );
 }

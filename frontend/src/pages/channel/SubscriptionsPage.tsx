@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Users } from "lucide-react";
 import { subscriptionService } from "../../services/subscription.service";
 import type { User } from "../../types";
@@ -52,8 +53,9 @@ export function SubscriptionsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {channels.map((channel) => (
-            <div
+            <Link
               key={channel._id}
+              to={`/channel/${channel.username}`}
               className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
             >
               <div className="flex items-center gap-3">
@@ -67,7 +69,7 @@ export function SubscriptionsPage() {
                   <p className="text-sm text-slate-500">@{channel.username}</p>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

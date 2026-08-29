@@ -14,15 +14,31 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   if (!isValidObjectId(videoId)) throw new ApiError(400, "Invalid video ID");
   if (!userId) throw new ApiError(401, "Unauthorized");
 
+  const reaction = req.body?.reaction === "unlike" ? "unlike" : "like";
   const existing = await Like.findOne({ video: videoId, likedBy: userId });
   if (existing) {
     await Like.deleteOne({ _id: existing._id });
-    const likesCount = await Like.countDocuments({ video: videoId });
+    const [likesCount, unlikesCount] = await Promise.all([
+      Like.countDocuments({
+        video: videoId,
+        $or: [{ reaction: "like" }, { reaction: { $exists: false } }],
+      }),
+      Like.countDocuments({ video: videoId, reaction: "unlike" }),
+    ]);
     return res.json(
-      new ApiResponse(200, { liked: false, likesCount }, "Video unliked")
+      new ApiResponse(
+        200,
+        {
+          reaction: null,
+          liked: false,
+          likesCount,
+          unlikesCount,
+        },
+        "Video reaction updated"
+      )
     );
   } else {
-    await Like.create({ video: videoId, likedBy: userId });
+    await Like.create({ video: videoId, likedBy: userId, reaction });
     const video = await Video.findById(videoId).select("owner title");
     if (video?.owner && video.owner.toString() !== userId.toString()) {
       await Notification.create({
@@ -33,9 +49,19 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
         message: "liked your video",
       });
     }
-    const likesCount = await Like.countDocuments({ video: videoId });
+    const [likesCount, unlikesCount] = await Promise.all([
+      Like.countDocuments({
+        video: videoId,
+        $or: [{ reaction: "like" }, { reaction: { $exists: false } }],
+      }),
+      Like.countDocuments({ video: videoId, reaction: "unlike" }),
+    ]);
     return res.json(
-      new ApiResponse(201, { liked: true, likesCount }, "Video liked")
+      new ApiResponse(
+        201,
+        { reaction, liked: reaction === "like", likesCount, unlikesCount },
+        "Video reaction saved"
+      )
     );
   }
 });
@@ -71,15 +97,31 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
   if (!isValidObjectId(tweetId)) throw new ApiError(400, "Invalid tweet ID");
   if (!userId) throw new ApiError(401, "Unauthorized");
 
+  const reaction = req.body?.reaction === "unlike" ? "unlike" : "like";
   const existing = await Like.findOne({ tweet: tweetId, likedBy: userId });
   if (existing) {
     await Like.deleteOne({ _id: existing._id });
-    const likesCount = await Like.countDocuments({ tweet: tweetId });
+    const [likesCount, unlikesCount] = await Promise.all([
+      Like.countDocuments({
+        tweet: tweetId,
+        $or: [{ reaction: "like" }, { reaction: { $exists: false } }],
+      }),
+      Like.countDocuments({ tweet: tweetId, reaction: "unlike" }),
+    ]);
     return res.json(
-      new ApiResponse(200, { liked: false, likesCount }, "Tweet unliked")
+      new ApiResponse(
+        200,
+        {
+          reaction: null,
+          liked: false,
+          likesCount,
+          unlikesCount,
+        },
+        "Post reaction updated"
+      )
     );
   } else {
-    await Like.create({ tweet: tweetId, likedBy: userId });
+    await Like.create({ tweet: tweetId, likedBy: userId, reaction });
     const tweet = await Tweet.findById(tweetId).select("owner");
     if (tweet?.owner && tweet.owner.toString() !== userId.toString()) {
       await Notification.create({
@@ -90,9 +132,19 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
         message: "liked your post",
       });
     }
-    const likesCount = await Like.countDocuments({ tweet: tweetId });
+    const [likesCount, unlikesCount] = await Promise.all([
+      Like.countDocuments({
+        tweet: tweetId,
+        $or: [{ reaction: "like" }, { reaction: { $exists: false } }],
+      }),
+      Like.countDocuments({ tweet: tweetId, reaction: "unlike" }),
+    ]);
     return res.json(
-      new ApiResponse(201, { liked: true, likesCount }, "Tweet liked")
+      new ApiResponse(
+        201,
+        { reaction, liked: reaction === "like", likesCount, unlikesCount },
+        "Post reaction saved"
+      )
     );
   }
 });

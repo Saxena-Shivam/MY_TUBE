@@ -172,17 +172,21 @@ export function PlaylistDetailPage() {
         onConfirm={async () => {
           if (!playlistId || !removeVideoId) return;
           try {
-            await playlistService.removeVideo(playlistId, removeVideoId);
+            const response = await playlistService.removeVideo(
+              playlistId,
+              removeVideoId,
+            );
             setPlaylist((prev) =>
               prev
                 ? {
                     ...prev,
-                    videos: (prev.videos as Array<Video | string>).filter(
-                      (item) =>
-                        typeof item === "string"
-                          ? item !== removeVideoId
-                          : Boolean(item?._id && item._id !== removeVideoId),
-                    ),
+                    videos: Array.isArray(response.data?.videos)
+                      ? response.data.videos
+                      : (prev.videos || []).filter((item) =>
+                          typeof item === "string"
+                            ? item !== removeVideoId
+                            : item?._id !== removeVideoId,
+                        ),
                   }
                 : prev,
             );

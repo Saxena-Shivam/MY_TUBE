@@ -12,6 +12,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { getVideoDuration } from "../utils/getVideoDuration.js";
+import { withLikeStats } from "../utils/likeStats.js";
 
 // Get all videos with pagination, search, sort, and filter by user
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -42,13 +43,22 @@ const getAllVideos = asyncHandler(async (req, res) => {
     .skip((page - 1) * limit)
     .limit(Number(limit))
     .populate("owner", "username fullName avatar");
+  const decoratedVideos = await withLikeStats(videos, {
+    field: "video",
+    userId: req.user?._id,
+  });
 
   const total = await Video.countDocuments(filter);
 
   res.json(
     new ApiResponse(
       200,
-      { videos, total, page: Number(page), limit: Number(limit) },
+      {
+        videos: decoratedVideos,
+        total,
+        page: Number(page),
+        limit: Number(limit),
+      },
       "Videos fetched successfully"
     )
   );
@@ -137,21 +147,34 @@ const getVideoById = asyncHandler(async (req, res) => {
 
   const userId = req.user?._id;
   const ownerId = video.owner?._id || video.owner;
-  const [likesCount, isLiked, subscribersCount, isSubscribed] =
-    await Promise.all([
-      Like.countDocuments({ video: videoId }),
-      userId ? Like.exists({ video: videoId, likedBy: userId }) : false,
-      ownerId ? Subscription.countDocuments({ channel: ownerId }) : 0,
-      userId && ownerId
-        ? Subscription.exists({ channel: ownerId, subscriber: userId })
-        : false,
-    ]);
+  const [
+    likesCount,
+    unlikesCount,
+    reactionRecord,
+    subscribersCount,
+    isSubscribed,
+  ] = await Promise.all([
+    Like.countDocuments({
+      video: videoId,
+      $or: [{ reaction: "like" }, { reaction: { $exists: false } }],
+    }),
+    Like.countDocuments({ video: videoId, reaction: "unlike" }),
+    userId
+      ? Like.findOne({ video: videoId, likedBy: userId }).select("reaction")
+      : null,
+    ownerId ? Subscription.countDocuments({ channel: ownerId }) : 0,
+    userId && ownerId
+      ? Subscription.exists({ channel: ownerId, subscriber: userId })
+      : false,
+  ]);
 
   const payload = video.toObject();
   payload.duration =
     payload.duration == null ? 0 : Number(Number(payload.duration).toFixed(2));
   payload.likesCount = likesCount;
-  payload.isLiked = Boolean(isLiked);
+  payload.unlikesCount = unlikesCount;
+  payload.reaction = reactionRecord?.reaction || null;
+  payload.isLiked = payload.reaction === "like";
   if (payload.owner && typeof payload.owner === "object") {
     payload.owner.subscribersCount = subscribersCount;
     payload.owner.isSubscribed = Boolean(isSubscribed);
@@ -243,7 +266,13 @@ const getVideosByUsername = asyncHandler(async (req, res) => {
   const videos = await Video.find({ owner: user._id, isPublished: true })
     .sort({ createdAt: -1 })
     .populate("owner", "username fullName avatar");
-  res.json(new ApiResponse(200, videos, "Videos fetched successfully"));
+  const decoratedVideos = await withLikeStats(videos, {
+    field: "video",
+    userId: req.user?._id,
+  });
+  res.json(
+    new ApiResponse(200, decoratedVideos, "Videos fetched successfully")
+  );
 });
 export {
   getAllVideos,

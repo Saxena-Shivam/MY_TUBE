@@ -12,13 +12,14 @@ import {
 import { optionalJWT, verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { Video } from "../models/video.model.js";
+import { withLikeStats } from "../utils/likeStats.js";
 
 const router = Router();
 
 // PUBLIC ROUTES
 
 // Trending Route
-router.get("/trending", async (req, res) => {
+router.get("/trending", optionalJWT, async (req, res) => {
   try {
     const twoMonthsAgo = new Date();
     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
@@ -31,7 +32,11 @@ router.get("/trending", async (req, res) => {
       .limit(40)
       .populate("owner", "username fullName avatar");
 
-    res.json({ data: trendingVideos });
+    const decoratedVideos = await withLikeStats(trendingVideos, {
+      field: "video",
+      userId: req.user?._id,
+    });
+    res.json({ data: decoratedVideos });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch trending videos" });
   }

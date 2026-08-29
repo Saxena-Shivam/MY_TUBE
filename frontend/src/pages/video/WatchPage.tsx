@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Bookmark,
   Heart,
@@ -48,11 +48,13 @@ export function WatchPage() {
   const [commenting, setCommenting] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [reaction, setReaction] = useState<"like" | "unlike" | null>(null);
+  const [unlikesCount, setUnlikesCount] = useState(0);
   const [subscribed, setSubscribed] = useState(false);
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [playbackError, setPlaybackError] = useState(false);
+  const [recommendations, setRecommendations] = useState<Video[]>([]);
   const likeLock = useRef(false);
   const subLock = useRef(false);
   const loadedVideoId = useRef<string | null>(null);
@@ -73,8 +75,19 @@ export function WatchPage() {
         const response = await videoService.getById(videoId);
         const next = response.data;
         setVideo(next);
-        setLiked(Boolean(next.isLiked));
+        try {
+          const related = await videoService.getAll({ limit: 8 });
+          setRecommendations(
+            (related.data.videos || []).filter(
+              (item) => item._id !== videoId && Boolean(item?._id),
+            ),
+          );
+        } catch {
+          setRecommendations([]);
+        }
+        setReaction(next.reaction ?? (next.isLiked ? "like" : null));
         setLikesCount(next.likesCount ?? 0);
+        setUnlikesCount(next.unlikesCount ?? 0);
         setSubscribed(
           Boolean(
             next.isSubscribed ||
@@ -104,24 +117,15 @@ export function WatchPage() {
   useEffect(() => {
     if (!videoId || !video || recordedViewId.current === videoId) return;
     recordedViewId.current = videoId;
-    void videoService.recordView(videoId).then((response) => {
-      setVideo((current) =>
-        current ? { ...current, views: response.data.views } : current,
-      );
-    });
+    void videoService
+      .recordView(videoId)
+      .then((response) => {
+        setVideo((current) =>
+          current ? { ...current, views: response.data.views } : current,
+        );
+      })
+      .catch(() => undefined);
   }, [videoId, video]);
-
-  useEffect(() => {
-    if (!video) return;
-    setLiked(Boolean(video.isLiked));
-    setLikesCount(video.likesCount ?? 0);
-    setSubscribed(
-      Boolean(video.isSubscribed || getOwner(video.owner)?.isSubscribed),
-    );
-    setSubscribersCount(
-      video.subscribersCount ?? getOwner(video.owner)?.subscribersCount ?? 0,
-    );
-  }, [video]);
 
   const requireAuth = () => {
     if (isAuthenticated) return true;
@@ -149,21 +153,33 @@ export function WatchPage() {
     }
   };
 
-  const handleLike = async () => {
+  const handleReaction = async (nextReaction: "like" | "unlike") => {
     if (!videoId || !requireAuth() || likeLock.current) return;
     likeLock.current = true;
-    const nextLiked = !liked;
-    setLiked(nextLiked);
-    setLikesCount((count) => count + (nextLiked ? 1 : -1));
+    const next = reaction === nextReaction ? null : nextReaction;
+    setReaction(next);
+    if (reaction === "like") setLikesCount((count) => count - 1);
+    if (reaction === "unlike") setUnlikesCount((count) => count - 1);
+    if (next === "like") setLikesCount((count) => count + 1);
+    if (next === "unlike") setUnlikesCount((count) => count + 1);
     try {
-      const response = await likeService.toggleVideo(videoId);
-      const data = response.data as { liked?: boolean; likesCount?: number };
-      if (typeof data?.liked === "boolean") setLiked(data.liked);
+      const response = await likeService.toggleVideo(videoId, nextReaction);
+      const data = response.data as {
+        reaction?: "like" | "unlike" | null;
+        likesCount?: number;
+        unlikesCount?: number;
+      };
+      if (data?.reaction !== undefined) setReaction(data.reaction);
       if (typeof data?.likesCount === "number") setLikesCount(data.likesCount);
-      toast.success(nextLiked ? "Video liked" : "Video unliked");
+      if (typeof data?.unlikesCount === "number")
+        setUnlikesCount(data.unlikesCount);
+      toast.success(next ? `Video ${next}` : "Video reaction removed");
     } catch (error) {
-      setLiked(!nextLiked);
-      setLikesCount((count) => count + (nextLiked ? -1 : 1));
+      setReaction(reaction);
+      if (reaction === "like") setLikesCount((count) => count + 1);
+      if (reaction === "unlike") setUnlikesCount((count) => count + 1);
+      if (next === "like") setLikesCount((count) => count - 1);
+      if (next === "unlike") setUnlikesCount((count) => count - 1);
       toast.error(getApiErrorMessage(error, "Could not update like"));
     } finally {
       likeLock.current = false;
@@ -265,11 +281,28 @@ export function WatchPage() {
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => void handleLike()}
-                className={`${btnSecondary} ${liked ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300" : ""}`}
+                onClick={() => void handleReaction("like")}
+                className={
+                  reaction === "like"
+                    ? "inline-flex items-center justify-center gap-2 rounded-full border border-red-500 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-300"
+                    : btnSecondary
+                }
               >
-                <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
-                {liked ? "Unlike" : "Like"} {likesCount}
+                <Heart
+                  className={`h-4 w-4 ${reaction === "like" ? "fill-current" : ""}`}
+                />{" "}
+                Like {likesCount}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleReaction("unlike")}
+                className={
+                  reaction === "unlike"
+                    ? "inline-flex items-center justify-center gap-2 rounded-full border border-slate-700 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-950 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
+                    : btnSecondary
+                }
+              >
+                Unlike {unlikesCount}
               </button>
               <ShareMenu title={video.title} />
               <button
@@ -306,15 +339,20 @@ export function WatchPage() {
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-3">
-              <img
-                src={owner?.avatar || avatarFallback(owner?.fullName)}
-                alt="channel"
-                className="h-12 w-12 rounded-full object-cover"
-              />
+              <Link to={owner?.username ? `/channel/${owner.username}` : "#"}>
+                <img
+                  src={owner?.avatar || avatarFallback(owner?.fullName)}
+                  alt="channel"
+                  className="h-12 w-12 rounded-full object-cover"
+                />
+              </Link>
               <div>
-                <p className="font-semibold text-slate-900 dark:text-white">
+                <Link
+                  to={owner?.username ? `/channel/${owner.username}` : "#"}
+                  className="font-semibold text-slate-900 hover:underline dark:text-white"
+                >
                   {owner?.fullName || owner?.username || "creator"}
-                </p>
+                </Link>
                 <p className="text-sm text-slate-600 dark:text-slate-300">
                   {formatCount(subscribersCount)} subscribers
                 </p>
@@ -427,6 +465,32 @@ export function WatchPage() {
             </div>
           </div>
         </div>
+        {recommendations.length > 0 && (
+          <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+            <h2 className="text-xl font-bold">Recommended videos</h2>
+            {recommendations.map((item) => (
+              <Link
+                key={item._id}
+                to={`/watch/${item._id}`}
+                className="group flex gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+              >
+                <img
+                  src={item.thumbnail || avatarFallback(item.title)}
+                  alt={item.title}
+                  className="h-20 w-32 shrink-0 rounded-xl object-cover transition group-hover:opacity-80"
+                />
+                <span className="min-w-0">
+                  <span className="line-clamp-3 text-sm font-semibold">
+                    {item.title}
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {item.views ?? 0} views
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </aside>
+        )}
       </div>
 
       <SaveToPlaylistModal

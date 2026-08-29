@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
 import { History, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 import { watchHistoryService } from "../../services/watchHistory.service";
 import type { Video } from "../../types";
 import { EmptyState } from "../../components/common/EmptyState";
 import { SkeletonBox } from "../../components/common/Loader";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { getApiErrorMessage } from "../../api/axios";
+import { VideoCard } from "../../components/video/VideoCard";
 
 export function HistoryPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmClear, setConfirmClear] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -72,63 +71,35 @@ export function HistoryPage() {
           description="Your recently watched videos will appear here."
         />
       ) : (
-        <div className="space-y-4">
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {videos.map((video) => (
-            <div
-              key={video._id}
-              className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row"
-            >
+            <div key={video._id} className="relative">
+              <VideoCard video={video} />
               <button
                 type="button"
-                onClick={() => navigate(`/watch/${video._id}`)}
-                className="shrink-0"
-              >
-                <img
-                  src={video.thumbnail || undefined}
-                  alt={video.title}
-                  className="h-28 w-full rounded-2xl object-cover sm:w-44"
-                />
-              </button>
-              <div className="flex flex-1 flex-col justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">{video.title}</h2>
-                  <p className="text-sm text-slate-500">
-                    {typeof video.owner === "object"
-                      ? video.owner.username
-                      : "creator"}
-                  </p>
-                </div>
-                <div className="mt-2 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                  <span>{video.views ?? 0} views</span>
-                  <span>•</span>
-                  <span>watched recently</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void watchHistoryService
-                      .remove(video._id)
-                      .then(() => {
-                        setVideos((prev) =>
-                          prev.filter((item) => item._id !== video._id),
-                        );
-                        toast.success("Removed from history");
-                      })
-                      .catch((error) =>
-                        toast.error(
-                          getApiErrorMessage(
-                            error,
-                            "Could not remove from history",
-                          ),
+                onClick={() =>
+                  void watchHistoryService
+                    .remove(video._id)
+                    .then(() => {
+                      setVideos((prev) =>
+                        prev.filter((item) => item._id !== video._id),
+                      );
+                      toast.success("Removed from history");
+                    })
+                    .catch((error) =>
+                      toast.error(
+                        getApiErrorMessage(
+                          error,
+                          "Could not remove from history",
                         ),
-                      )
-                  }
-                  className="self-end rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
-                  aria-label="Remove from history"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+                      ),
+                    )
+                }
+                className="absolute right-2 top-2 z-10 rounded-full border border-white/30 bg-white p-2 text-slate-600 shadow-lg hover:bg-red-50 hover:text-red-600 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                aria-label="Remove from history"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           ))}
         </div>

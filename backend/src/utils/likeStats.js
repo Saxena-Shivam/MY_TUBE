@@ -2,27 +2,34 @@ import { Like } from "../models/like.model.js";
 import { Comment } from "../models/comment.model.js";
 
 export async function withLikeStats(docs, { field, userId }) {
-  const items = (docs || []).map((doc) => (doc?.toObject ? doc.toObject() : doc));
+  const items = (docs || []).map((doc) =>
+    doc?.toObject ? doc.toObject() : doc
+  );
   const ids = items.map((item) => item?._id).filter(Boolean);
   if (!ids.length) return items;
 
   const likes = await Like.find({ [field]: { $in: ids } });
   const counts = {};
-  const liked = new Set();
+  const unlikeCounts = {};
+  const reactions = new Map();
 
   for (const like of likes) {
     const id = like[field]?.toString();
     if (!id) continue;
-    counts[id] = (counts[id] || 0) + 1;
+    const reaction = like.reaction || "like";
+    if (reaction === "unlike") unlikeCounts[id] = (unlikeCounts[id] || 0) + 1;
+    else counts[id] = (counts[id] || 0) + 1;
     if (userId && like.likedBy?.toString() === userId.toString()) {
-      liked.add(id);
+      reactions.set(id, reaction);
     }
   }
 
   return items.map((item) => ({
     ...item,
     likesCount: counts[item._id.toString()] || 0,
-    isLiked: liked.has(item._id.toString()),
+    unlikesCount: unlikeCounts[item._id.toString()] || 0,
+    reaction: reactions.get(item._id.toString()) || null,
+    isLiked: reactions.get(item._id.toString()) === "like",
   }));
 }
 

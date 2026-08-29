@@ -4,8 +4,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { PageLoader } from "./components/common/Loader";
 import { AppShell } from "./components/layout/AppShell";
 import { HomePage } from "./pages/home/HomePage";
-import { LoginPage } from "./pages/auth/LoginPage";
-import { RegisterPage } from "./pages/auth/RegisterPage";
+import { AuthPage } from "./pages/auth/AuthPage";
 import { TrendingPage } from "./pages/home/TrendingPage";
 import { WatchPage } from "./pages/video/WatchPage";
 import { UploadPage } from "./pages/video/UploadPage";
@@ -41,8 +40,11 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route element={<GuestRoute />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<AuthPage />} />
+            <Route
+              path="/register"
+              element={<AuthPage initialMode="signUp" />}
+            />
           </Route>
 
           <Route element={<AppShell />}>
@@ -50,7 +52,10 @@ export default function App() {
             <Route path="/trending" element={<TrendingPage />} />
             <Route path="/watch/:videoId" element={<WatchPage />} />
             <Route path="/channel/:username" element={<ChannelPage />} />
-            <Route path="/playlist/:playlistId" element={<PlaylistDetailPage />} />
+            <Route
+              path="/playlist/:playlistId"
+              element={<PlaylistDetailPage />}
+            />
 
             <Route element={<ProtectedRoute />}>
               <Route path="/upload" element={<UploadPage />} />

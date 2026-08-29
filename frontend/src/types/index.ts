@@ -33,12 +33,13 @@ export type Video = {
   owner?: User | string;
   isPublished?: boolean;
   likesCount?: number;
+  unlikesCount?: number;
+  reaction?: "like" | "unlike" | null;
   isLiked?: boolean;
   subscribersCount?: number;
   isSubscribed?: boolean;
   createdAt?: string;
   updatedAt?: string;
-  tags?: string[];
 };
 
 export type Comment = {
@@ -69,6 +70,8 @@ export type Tweet = {
   content: string;
   owner?: User | string;
   likesCount?: number;
+  unlikesCount?: number;
+  reaction?: "like" | "unlike" | null;
   isLiked?: boolean;
   commentsCount?: number;
   createdAt?: string;

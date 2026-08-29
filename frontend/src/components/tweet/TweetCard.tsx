@@ -34,8 +34,11 @@ export function TweetCard({
   const ownerId = getOwnerId(tweet.owner);
   const isOwner = Boolean(user?._id && ownerId === user._id);
   const likeLock = useRef(false);
-  const [liked, setLiked] = useState(Boolean(tweet.isLiked));
+  const [reaction, setReaction] = useState<"like" | "unlike" | null>(
+    tweet.reaction ?? (tweet.isLiked ? "like" : null),
+  );
   const [likesCount, setLikesCount] = useState(tweet.likesCount ?? 0);
+  const [unlikesCount, setUnlikesCount] = useState(tweet.unlikesCount ?? 0);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentInput, setCommentInput] = useState("");
@@ -44,10 +47,17 @@ export function TweetCard({
   const [commentsCount, setCommentsCount] = useState(tweet.commentsCount ?? 0);
 
   useEffect(() => {
-    setLiked(Boolean(tweet.isLiked));
+    setReaction(tweet.reaction ?? (tweet.isLiked ? "like" : null));
     setLikesCount(tweet.likesCount ?? 0);
+    setUnlikesCount(tweet.unlikesCount ?? 0);
     setCommentsCount(tweet.commentsCount ?? 0);
-  }, [tweet.isLiked, tweet.likesCount, tweet.commentsCount]);
+  }, [
+    tweet.isLiked,
+    tweet.reaction,
+    tweet.likesCount,
+    tweet.unlikesCount,
+    tweet.commentsCount,
+  ]);
 
   const requireAuth = () => {
     if (isAuthenticated) return true;
@@ -55,26 +65,40 @@ export function TweetCard({
     return false;
   };
 
-  const toggleLike = async () => {
+  const toggleReaction = async (nextReaction: "like" | "unlike") => {
     if (!requireAuth() || likeLock.current) return;
     likeLock.current = true;
-    const nextLiked = !liked;
-    setLiked(nextLiked);
-    setLikesCount((count) => count + (nextLiked ? 1 : -1));
+    const next = reaction === nextReaction ? null : nextReaction;
+    setReaction(next);
+    if (reaction === "like") setLikesCount((count) => count - 1);
+    if (reaction === "unlike") setUnlikesCount((count) => count - 1);
+    if (next === "like") setLikesCount((count) => count + 1);
+    if (next === "unlike") setUnlikesCount((count) => count + 1);
     try {
-      const response = await likeService.toggleTweet(tweet._id);
-      const data = response.data as { liked?: boolean; likesCount?: number };
-      if (typeof data?.liked === "boolean") setLiked(data.liked);
+      const response = await likeService.toggleTweet(tweet._id, nextReaction);
+      const data = response.data as {
+        reaction?: "like" | "unlike" | null;
+        likesCount?: number;
+        unlikesCount?: number;
+      };
+      if (data?.reaction !== undefined) setReaction(data.reaction);
       if (typeof data?.likesCount === "number") setLikesCount(data.likesCount);
-      toast.success(nextLiked ? "Post liked" : "Post unliked");
+      if (typeof data?.unlikesCount === "number")
+        setUnlikesCount(data.unlikesCount);
+      toast.success(next ? `Post ${next}` : "Post reaction removed");
       onUpdated?.({
         ...tweet,
-        isLiked: data?.liked ?? nextLiked,
-        likesCount: data?.likesCount ?? likesCount + (nextLiked ? 1 : -1),
+        isLiked: data?.reaction === "like",
+        reaction: data?.reaction,
+        likesCount: data?.likesCount ?? likesCount,
+        unlikesCount: data?.unlikesCount ?? unlikesCount,
       });
     } catch (error) {
-      setLiked(!nextLiked);
-      setLikesCount((count) => count + (nextLiked ? -1 : 1));
+      setReaction(reaction);
+      if (reaction === "like") setLikesCount((count) => count + 1);
+      if (reaction === "unlike") setUnlikesCount((count) => count + 1);
+      if (next === "like") setLikesCount((count) => count - 1);
+      if (next === "unlike") setUnlikesCount((count) => count - 1);
       toast.error(getApiErrorMessage(error, "Could not update like"));
     } finally {
       likeLock.current = false;
@@ -150,11 +174,28 @@ export function TweetCard({
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => void toggleLike()}
-              className={`${btnSecondary} ${liked ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300" : ""}`}
+              onClick={() => void toggleReaction("like")}
+              className={
+                reaction === "like"
+                  ? "inline-flex items-center justify-center gap-2 rounded-full border border-red-500 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-300"
+                  : btnSecondary
+              }
             >
-              <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
-              {liked ? "Unlike" : "Like"} {likesCount}
+              <Heart
+                className={`h-4 w-4 ${reaction === "like" ? "fill-current" : ""}`}
+              />{" "}
+              Like {likesCount}
+            </button>
+            <button
+              type="button"
+              onClick={() => void toggleReaction("unlike")}
+              className={
+                reaction === "unlike"
+                  ? "inline-flex items-center justify-center gap-2 rounded-full border border-slate-700 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-950 dark:border-slate-500 dark:bg-slate-700 dark:text-white"
+                  : btnSecondary
+              }
+            >
+              Unlike {unlikesCount}
             </button>
             <button
               type="button"

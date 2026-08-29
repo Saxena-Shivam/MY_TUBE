@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Trash2 } from "lucide-react";
 import type { Video } from "../../types";
 import {
   avatarFallback,
@@ -12,9 +12,11 @@ import {
 export function VideoCard({
   video,
   onSave,
+  onDelete,
 }: {
   video: Video;
   onSave?: (video: Video) => void;
+  onDelete?: (video: Video) => void;
 }) {
   const navigate = useNavigate();
   const owner = getOwner(video.owner);
@@ -44,6 +46,19 @@ export function VideoCard({
             className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-white text-slate-900 shadow-lg hover:bg-slate-100 dark:bg-slate-950 dark:text-white dark:hover:bg-slate-800"
           >
             <Bookmark className="h-4 w-4" />
+          </button>
+        )}
+        {onDelete && (
+          <button
+            type="button"
+            title="Delete video"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(video);
+            }}
+            className="absolute bottom-2 left-2 flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 shadow-lg hover:bg-red-50 dark:border-red-900 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-950/50"
+          >
+            <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -76,7 +91,9 @@ export function VideoCard({
             {owner?.fullName || owner?.username || "Creator"}
           </button>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            {formatCount(video.views)} views • {timeAgo(video.createdAt)}
+            {formatCount(video.views)} views • {formatCount(video.likesCount)}{" "}
+            likes • {formatCount(video.unlikesCount)} unlikes •{" "}
+            {timeAgo(video.createdAt)}
           </p>
         </div>
       </div>

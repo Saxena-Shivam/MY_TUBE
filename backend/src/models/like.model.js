@@ -18,6 +18,11 @@ const likeSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
     },
+    reaction: {
+      type: String,
+      enum: ["like", "unlike"],
+      default: "like",
+    },
   },
   { timestamps: true }
 );
