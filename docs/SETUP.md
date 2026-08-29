@@ -88,6 +88,7 @@ Backend service:
 - Start command: `npm start`.
 - Add all backend environment variables from the Environment section in the hosting provider dashboard.
 - Set `CORS_ORIGIN` to the exact deployed frontend URL.
+- For the current deployment use `CORS_ORIGIN=https://my-tube-orcin-six.vercel.app`. Multiple origins may be comma-separated.
 - Use a hosted MongoDB connection string and production Cloudinary credentials.
 
 Frontend site:
@@ -96,6 +97,7 @@ Frontend site:
 - Build command: `npm run build`.
 - Output directory: `dist`.
 - Add `VITE_API_URL=https://your-backend-domain/api/v1`.
+- Put Vite environment files in `frontend/`, beside `package.json`, not inside `frontend/src/`.
 - Configure SPA fallback so all routes serve `index.html`.
 
 Deploy the backend first, verify `/api/v1/healthcheck`, then set the resulting backend URL in the frontend environment and deploy the frontend.

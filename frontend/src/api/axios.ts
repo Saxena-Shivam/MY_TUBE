@@ -23,7 +23,8 @@ export function setStoredToken(token?: string | null) {
 }
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1",
+  baseURL:
+    import.meta.env.VITE_API_URL || "https://my-tube-leow.onrender.com/api/v1",
   withCredentials: true,
 });
 
@@ -51,7 +52,9 @@ api.interceptors.response.use(
           {},
           { withCredentials: true },
         );
-        const accessToken = refresh.data?.data?.accessToken as string | undefined;
+        const accessToken = refresh.data?.data?.accessToken as
+          | string
+          | undefined;
         if (accessToken) {
           setStoredToken(accessToken);
           original.headers = original.headers || {};
