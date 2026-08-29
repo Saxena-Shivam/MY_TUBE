@@ -2,6 +2,10 @@ import api from "../api/axios";
 import type { ApiResponse, Tweet } from "../types";
 
 export const tweetService = {
+  getAll: async () => {
+    const response = await api.get<ApiResponse<Tweet[]>>("/tweets");
+    return response.data;
+  },
   getByUser: async (userId: string) => {
     const response = await api.get<ApiResponse<Tweet[]>>(
       `/tweets/user/${userId}`,

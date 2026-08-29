@@ -1,15 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { motion } from "framer-motion";
-import { UserPlus, Users, Video } from "lucide-react";
+import { ListVideo, UserPlus, Users, Video } from "lucide-react";
+import { toast } from "sonner";
 import api from "../../api/axios";
+import { getApiErrorMessage } from "../../api/axios";
 import { subscriptionService } from "../../services/subscription.service";
 import { videoService } from "../../services/video.service";
 import { tweetService } from "../../services/tweet.service";
-import type { ApiResponse, User, Video as VideoType, Tweet } from "../../types";
+import { playlistService } from "../../services/playlist.service";
+import type {
+  ApiResponse,
+  Playlist,
+  User,
+  Video as VideoType,
+  Tweet,
+} from "../../types";
 import { EmptyState } from "../../components/common/EmptyState";
 import { SkeletonBox } from "../../components/common/Loader";
+import { VideoCard } from "../../components/video/VideoCard";
+import { TweetCard } from "../../components/tweet/TweetCard";
 import { useAuth } from "../../context/AuthContext";
+import { btnPrimary, btnSecondary, formatCount } from "../../lib/utils";
 
 export function ChannelPage() {
   const { username } = useParams();
@@ -18,8 +29,10 @@ export function ChannelPage() {
   >(null);
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const subLock = useRef(false);
 
   useEffect(() => {
     if (!username) return;
@@ -27,19 +40,17 @@ export function ChannelPage() {
     const fetchChannel = async () => {
       setLoading(true);
       try {
-        const channelData = await api.get<ApiResponse<any>>(
+        const channelData = await api.get<ApiResponse<User>>(
           `/users/c/${username}`,
         );
-        setChannel(channelData.data.data);
+        const profile = channelData.data.data;
+        setChannel(profile);
         const videosData = await videoService.getByUsername(username);
         setVideos(videosData.data || []);
-        const userResponse =
-          await api.get<ApiResponse<{ _id: string }>>(`/users/current-user`);
-        const currentUserId = userResponse.data.data._id;
-        const tweetsData = await tweetService.getByUser(
-          channelData.data.data._id || currentUserId,
-        );
+        const tweetsData = await tweetService.getByUser(profile._id);
         setTweets(tweetsData.data || []);
+        const playlistsData = await playlistService.getByUser(profile._id);
+        setPlaylists(playlistsData.data || []);
       } catch {
         setChannel(null);
         setVideos([]);
@@ -58,17 +69,48 @@ export function ChannelPage() {
       window.location.href = "/login";
       return;
     }
-    await subscriptionService.toggle(channel._id);
+    if (channel._id === user._id || subLock.current) return;
+    subLock.current = true;
+    const next = !channel.isSubscribed;
     setChannel((prev) =>
       prev
         ? {
             ...prev,
-            isSubscribed: !prev.isSubscribed,
-            subscribersCount:
-              (prev.subscribersCount ?? 0) + (prev.isSubscribed ? -1 : 1),
+            isSubscribed: next,
+            subscribersCount: (prev.subscribersCount ?? 0) + (next ? 1 : -1),
           }
         : prev,
     );
+    try {
+      const response = await subscriptionService.toggle(channel._id);
+      const data = response.data as {
+        subscribed?: boolean;
+        subscribersCount?: number;
+      };
+      setChannel((prev) =>
+        prev
+          ? {
+              ...prev,
+              isSubscribed: data?.subscribed ?? next,
+              subscribersCount: data?.subscribersCount ?? prev.subscribersCount,
+            }
+          : prev,
+      );
+      toast.success(next ? "Subscribed" : "Unsubscribed");
+    } catch (error) {
+      setChannel((prev) =>
+        prev
+          ? {
+              ...prev,
+              isSubscribed: !next,
+              subscribersCount: (prev.subscribersCount ?? 0) + (next ? -1 : 1),
+            }
+          : prev,
+      );
+      toast.error(getApiErrorMessage(error, "Could not update subscription"));
+    } finally {
+      subLock.current = false;
+    }
   };
 
   if (loading) {
@@ -88,6 +130,8 @@ export function ChannelPage() {
       />
     );
   }
+
+  const isOwner = user?._id === channel._id;
 
   return (
     <div className="space-y-8 pb-20">
@@ -111,22 +155,26 @@ export function ChannelPage() {
                 className="h-20 w-20 rounded-full border-4 border-white object-cover shadow-md dark:border-slate-900"
               />
               <div>
-                <h1 className="text-3xl font-bold">{channel.fullName}</h1>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                  {channel.fullName}
+                </h1>
                 <p className="text-sm text-slate-500">@{channel.username}</p>
               </div>
             </div>
-            <button
-              onClick={() => void handleSubscribe()}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
-            >
-              <UserPlus className="h-4 w-4" />{" "}
-              {channel.isSubscribed ? "Subscribed" : "Subscribe"}
-            </button>
+            {!isOwner && (
+              <button
+                onClick={() => void handleSubscribe()}
+                className={channel.isSubscribed ? btnSecondary : btnPrimary}
+              >
+                <UserPlus className="h-4 w-4" />{" "}
+                {channel.isSubscribed ? "Subscribed" : "Subscribe"}
+              </button>
+            )}
           </div>
           <div className="mt-5 flex flex-wrap gap-5 text-sm text-slate-600 dark:text-slate-300">
             <span className="inline-flex items-center gap-2">
               <Users className="h-4 w-4" />{" "}
-              {(channel.subscribersCount ?? 0).toLocaleString()} subscribers
+              {formatCount(channel.subscribersCount)} subscribers
             </span>
             <span className="inline-flex items-center gap-2">
               <Video className="h-4 w-4" /> {videos.length} videos
@@ -134,6 +182,36 @@ export function ChannelPage() {
           </div>
         </div>
       </div>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
+          <ListVideo className="h-5 w-5 text-red-600" /> Playlists
+        </h2>
+        {playlists.length === 0 ? (
+          <EmptyState
+            title="No public playlists"
+            description="This channel has not created any playlists yet."
+          />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {playlists.map((playlist) => (
+              <a
+                key={playlist._id}
+                href={`/playlist/${playlist._id}`}
+                className="rounded-2xl border border-slate-200 p-4 hover:border-red-400 dark:border-slate-700"
+              >
+                <h3 className="font-semibold">{playlist.name}</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {playlist.videos?.filter(
+                    (video) => typeof video === "object" && video?._id,
+                  ).length || 0}{" "}
+                  videos
+                </p>
+              </a>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
@@ -146,47 +224,29 @@ export function ChannelPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {videos.map((video) => (
-                <motion.article
-                  key={video._id}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800"
-                >
-                  <img
-                    src={video.thumbnail || "https://images.unsplash.com/..."}
-                    alt={video.title}
-                    className="h-36 w-full object-cover"
-                  />
-                  <div className="p-3">
-                    <h3 className="line-clamp-2 text-sm font-semibold">
-                      {video.title}
-                    </h3>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {video.views ?? 0} views
-                    </p>
-                  </div>
-                </motion.article>
+                <VideoCard key={video._id} video={video} />
               ))}
             </div>
           )}
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="mb-4 text-xl font-bold">Tweets</h2>
+          <h2 className="mb-4 text-xl font-bold">Posts</h2>
           {tweets.length === 0 ? (
             <EmptyState
-              title="No tweets"
+              title="No posts"
               description="This creator hasn’t posted anything yet."
             />
           ) : (
             <div className="space-y-3">
               {tweets.map((tweet) => (
-                <div
+                <TweetCard
                   key={tweet._id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"
-                >
-                  <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
-                    {tweet.content}
-                  </p>
-                </div>
+                  tweet={tweet}
+                  onDeleted={(id) =>
+                    setTweets((prev) => prev.filter((item) => item._id !== id))
+                  }
+                />
               ))}
             </div>
           )}

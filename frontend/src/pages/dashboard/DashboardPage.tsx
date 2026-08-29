@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
-import { BarChart3, PlayCircle, Users, ThumbsUp } from "lucide-react";
+import { BarChart3, PlayCircle, ThumbsUp, Trash2, Users } from "lucide-react";
+import { toast } from "sonner";
 import { dashboardService } from "../../services/dashboard.service";
+import { videoService } from "../../services/video.service";
 import type { ChannelStats, Video } from "../../types";
 import { SkeletonBox } from "../../components/common/Loader";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { getApiErrorMessage } from "../../api/axios";
+import { formatDuration } from "../../lib/utils";
 
 export function DashboardPage() {
   const [stats, setStats] = useState<ChannelStats | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -80,16 +86,42 @@ export function DashboardPage() {
                 alt={video.title}
                 className="h-16 w-24 rounded-xl object-cover"
               />
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <p className="font-medium">{video.title}</p>
                 <p className="text-xs text-slate-500">
-                  {video.views ?? 0} views
+                  {video.views ?? 0} views • {formatDuration(video.duration)}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => setDeleteId(video._id)}
+                className="rounded-full p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                aria-label="Delete video"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
           ))}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(deleteId)}
+        title="Delete this video?"
+        description="This video will be permanently removed."
+        onClose={() => setDeleteId(null)}
+        onConfirm={async () => {
+          if (!deleteId) return;
+          try {
+            await videoService.delete(deleteId);
+            setVideos((prev) => prev.filter((item) => item._id !== deleteId));
+            setDeleteId(null);
+            toast.success("Video deleted");
+          } catch (error) {
+            toast.error(getApiErrorMessage(error, "Could not delete video"));
+          }
+        }}
+      />
     </div>
   );
 }

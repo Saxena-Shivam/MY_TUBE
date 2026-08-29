@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { UserCircle2, Camera, Lock, Save } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { avatarFallback } from "../../lib/utils";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "../../api/axios";
 
 export function SettingsPage() {
   const { user, updateAccount, updateAvatar, updateCoverImage } = useAuth();
@@ -9,6 +12,10 @@ export function SettingsPage() {
   const [email, setEmail] = useState(user?.email ?? "");
   const [avatar, setAvatar] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
+  const avatarPreview = avatar ? URL.createObjectURL(avatar) : user?.avatar;
+  const coverPreview = coverImage
+    ? URL.createObjectURL(coverImage)
+    : user?.coverImage;
 
   useEffect(() => {
     setFullName(user?.fullName ?? "");
@@ -23,6 +30,9 @@ export function SettingsPage() {
       if (coverImage) await updateCoverImage(coverImage);
       setAvatar(null);
       setCoverImage(null);
+      toast.success("Profile updated");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Could not update profile"));
     } finally {
       setSaving(false);
     }
@@ -31,6 +41,25 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-20">
       <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative mb-6 h-40 overflow-hidden rounded-2xl bg-slate-200 dark:bg-slate-800">
+          {coverPreview && (
+            <img
+              src={coverPreview}
+              alt="Cover preview"
+              className="h-full w-full object-cover"
+            />
+          )}
+          {!coverPreview && (
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              No cover image
+            </div>
+          )}
+          <img
+            src={avatarPreview || avatarFallback(user?.fullName)}
+            alt="Avatar preview"
+            className="absolute bottom-3 left-4 h-20 w-20 rounded-full border-4 border-white object-cover dark:border-slate-900"
+          />
+        </div>
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-sky-500/10 p-2 text-sky-500">
             <UserCircle2 className="h-5 w-5" />
@@ -91,7 +120,7 @@ export function SettingsPage() {
         <button
           onClick={() => void saveProfile()}
           disabled={saving}
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 font-medium text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white shadow-sm hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save changes"}
         </button>

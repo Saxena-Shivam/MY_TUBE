@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Library, Plus } from "lucide-react";
+import { Library, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { playlistService } from "../../services/playlist.service";
 import { useAuth } from "../../context/AuthContext";
 import type { Playlist } from "../../types";
 import { EmptyState } from "../../components/common/EmptyState";
 import { SkeletonBox } from "../../components/common/Loader";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { getApiErrorMessage } from "../../api/axios";
+import { btnPrimary, inputClass } from "../../lib/utils";
 
 export function PlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -31,13 +36,18 @@ export function PlaylistsPage() {
 
   const handleCreate = async () => {
     if (!name.trim()) return;
-    const response = await playlistService.create({
-      name: name.trim(),
-      description: description.trim() || "No description",
-    });
-    setPlaylists((prev) => [response.data, ...prev]);
-    setName("");
-    setDescription("");
+    try {
+      const response = await playlistService.create({
+        name: name.trim(),
+        description: description.trim() || "No description",
+      });
+      setPlaylists((prev) => [response.data, ...prev]);
+      setName("");
+      setDescription("");
+      toast.success("Playlist created");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Could not create playlist"));
+    }
   };
 
   if (loading) {
@@ -64,18 +74,15 @@ export function PlaylistsPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Playlist name"
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800"
+            className={inputClass}
           />
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description"
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800"
+            className={inputClass}
           />
-          <button
-            onClick={() => void handleCreate()}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 font-medium text-white dark:bg-slate-100 dark:text-slate-900"
-          >
+          <button type="button" onClick={() => void handleCreate()} className={btnPrimary}>
             <Plus className="h-4 w-4" /> Create
           </button>
         </div>
@@ -89,26 +96,65 @@ export function PlaylistsPage() {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {playlists.map((playlist) => (
-            <button
+            <div
               key={playlist._id}
-              onClick={() => navigate(`/playlist/${playlist._id}`)}
-              className="overflow-hidden rounded-3xl border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 dark:border-slate-800 dark:bg-slate-900"
+              className="overflow-hidden rounded-3xl border border-slate-200 bg-white text-left shadow-sm dark:border-slate-800 dark:bg-slate-900"
             >
-              <div className="h-40 bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-900" />
+              <button
+                type="button"
+                onClick={() => navigate(`/playlist/${playlist._id}`)}
+                className="h-40 w-full bg-gradient-to-br from-slate-200 via-slate-100 to-slate-300 dark:from-slate-700 dark:via-slate-800 dark:to-slate-900"
+              />
               <div className="p-4">
-                <h3 className="text-lg font-semibold">{playlist.name}</h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {playlist.description || "No description"}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/playlist/${playlist._id}`)}
+                    className="text-left"
+                  >
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      {playlist.name}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {playlist.description || "No description"}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteId(playlist._id)}
+                    className="rounded-full p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                    aria-label="Delete playlist"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
                 <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                   {Array.isArray(playlist.videos) ? playlist.videos.length : 0}{" "}
                   videos
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteId)}
+        title="Delete playlist?"
+        description="This playlist and its saved order will be removed."
+        onClose={() => setDeleteId(null)}
+        onConfirm={async () => {
+          if (!deleteId) return;
+          try {
+            await playlistService.delete(deleteId);
+            setPlaylists((prev) => prev.filter((item) => item._id !== deleteId));
+            setDeleteId(null);
+            toast.success("Playlist deleted");
+          } catch (error) {
+            toast.error(getApiErrorMessage(error, "Could not delete playlist"));
+          }
+        }}
+      />
     </div>
   );
 }

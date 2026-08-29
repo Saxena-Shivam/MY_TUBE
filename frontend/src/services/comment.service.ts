@@ -13,10 +13,28 @@ export const commentService = {
     >(`/comments/${videoId}`);
     return response.data;
   },
-  create: async (videoId: string, content: string) => {
+  getByTweet: async (tweetId: string) => {
+    const response = await api.get<
+      ApiResponse<{
+        comments: Comment[];
+        total: number;
+        page: number;
+        limit: number;
+      }>
+    >(`/comments/tweet/${tweetId}`);
+    return response.data;
+  },
+  create: async (videoId: string, content: string, parentId?: string) => {
     const response = await api.post<ApiResponse<Comment>>(
       `/comments/${videoId}`,
-      { content },
+      { content, parentId },
+    );
+    return response.data;
+  },
+  createOnTweet: async (tweetId: string, content: string, parentId?: string) => {
+    const response = await api.post<ApiResponse<Comment>>(
+      `/comments/tweet/${tweetId}`,
+      { content, parentId },
     );
     return response.data;
   },

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   UploadCloud,
@@ -7,16 +7,33 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { videoService } from "../../services/video.service";
+import { playlistService } from "../../services/playlist.service";
+import { useAuth } from "../../context/AuthContext";
+import type { Playlist } from "../../types";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "../../api/axios";
 
 export function UploadPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [tags, setTags] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [status, setStatus] = useState<
     "idle" | "uploading" | "success" | "error"
   >("idle");
   const [error, setError] = useState("");
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [selectedPlaylists, setSelectedPlaylists] = useState<string[]>([]);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user?._id) {
+      void playlistService
+        .getByUser(user._id)
+        .then((response) => setPlaylists(response.data || []));
+    }
+  }, [user?._id]);
 
   const handleUpload = async () => {
     if (!videoFile || !thumbnail || !title.trim()) {
@@ -32,17 +49,25 @@ export function UploadPage() {
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
+      formData.append("tags", tags);
       formData.append("videoFile", videoFile);
       formData.append("thumbnail", thumbnail);
+      selectedPlaylists.forEach((playlistId) =>
+        formData.append("playlistIds", playlistId),
+      );
       await videoService.upload(formData);
       setStatus("success");
       setTitle("");
       setDescription("");
+      setTags("");
       setVideoFile(null);
       setThumbnail(null);
+      setSelectedPlaylists([]);
+      toast.success("Video published");
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(getApiErrorMessage(err, "Upload failed"));
+      toast.error(getApiErrorMessage(err, "Upload failed"));
     }
   };
 
@@ -68,6 +93,20 @@ export function UploadPage() {
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800"
                 placeholder="Your title"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium">
+                Tags{" "}
+                <span className="text-slate-500">
+                  (optional, comma separated)
+                </span>
+              </span>
+              <input
+                value={tags}
+                onChange={(event) => setTags(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800"
+                placeholder="travel, tutorial, music"
               />
             </label>
 
@@ -117,6 +156,32 @@ export function UploadPage() {
                 )}
               </label>
             </div>
+            {playlists.length > 0 && (
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">
+                  Add to playlists
+                </legend>
+                {playlists.map((playlist) => (
+                  <label
+                    key={playlist._id}
+                    className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedPlaylists.includes(playlist._id)}
+                      onChange={(event) =>
+                        setSelectedPlaylists((current) =>
+                          event.target.checked
+                            ? [...current, playlist._id]
+                            : current.filter((id) => id !== playlist._id),
+                        )
+                      }
+                    />
+                    {playlist.name}
+                  </label>
+                ))}
+              </fieldset>
+            )}
           </div>
 
           <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
@@ -152,7 +217,8 @@ export function UploadPage() {
 
             <button
               onClick={() => void handleUpload()}
-              className="w-full rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white dark:bg-slate-100 dark:text-slate-900"
+              disabled={status === "uploading"}
+              className="w-full rounded-xl bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {status === "uploading" ? "Uploading..." : "Publish video"}
             </button>

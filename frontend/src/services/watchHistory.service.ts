@@ -7,4 +7,6 @@ export const watchHistoryService = {
     const response = await api.get<ApiResponse<Video[]>>("/history");
     return response.data;
   },
+  remove: async (videoId: string) => api.delete(`/history/${videoId}`),
+  clear: async () => api.delete("/history"),
 };

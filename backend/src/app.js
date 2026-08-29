@@ -27,6 +27,7 @@ import likeRouter from "./routes/like.routes.js";
 import playlistRouter from "./routes/playlist.routes.js";
 import dashboardRouter from "./routes/dashboard.routes.js";
 import watchHistoryRoutes from "./routes/watchHistory.routes.js";
+import notificationRouter from "./routes/notification.routes.js";
 // import trendingRoutes from "./routes/trending.routes.js";
 //routes declaration
 app.use("/api/v1/healthcheck", healthcheckRouter);
@@ -39,6 +40,7 @@ app.use("/api/v1/likes", likeRouter);
 app.use("/api/v1/playlists", playlistRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
 app.use("/api/v1/history", watchHistoryRoutes);
+app.use("/api/v1/notifications", notificationRouter);
 // app.use("/api/v1/videos", trendingRoutes);
 // http://localhost:5000/api/v1/users/register
 

@@ -27,6 +27,7 @@ const videoSchema = new Schema(
       type: Number, //cloudanary url
       require: true,
     },
+    tags: { type: [String], default: [] },
     views: {
       type: Number,
       default: 0,

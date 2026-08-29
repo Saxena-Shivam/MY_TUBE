@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { TrendingUp, Eye, Clock3 } from "lucide-react";
 import { videoService } from "../../services/video.service";
 import type { Video } from "../../types";
@@ -10,6 +11,7 @@ export function TrendingPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTrending = async () => {
@@ -72,11 +74,17 @@ export function TrendingPage() {
               <div className="flex items-center justify-center rounded-2xl bg-slate-100 px-4 py-3 text-2xl font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 #{index + 1}
               </div>
-              <img
-                src={video.thumbnail || "https://images.unsplash.com/..."}
-                alt={video.title}
-                className="h-32 w-full rounded-2xl object-cover sm:w-52"
-              />
+              <button
+                type="button"
+                onClick={() => navigate(`/watch/${video._id}`)}
+                className="shrink-0"
+              >
+                <img
+                  src={video.thumbnail || "https://images.unsplash.com/..."}
+                  alt={video.title}
+                  className="h-32 w-full rounded-2xl object-cover sm:w-52"
+                />
+              </button>
               <div className="flex flex-1 flex-col justify-between">
                 <div>
                   <h2 className="text-lg font-semibold">{video.title}</h2>

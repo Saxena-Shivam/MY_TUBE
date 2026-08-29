@@ -6,11 +6,11 @@ export function PageLoader() {
       <motion.div
         animate={{ rotate: 360 }}
         transition={{
-          duration: 1,
+          duration: 0.9,
           repeat: Number.POSITIVE_INFINITY,
           ease: "linear",
         }}
-        className="h-10 w-10 rounded-full border-4 border-slate-200 border-t-slate-900 dark:border-slate-700 dark:border-t-slate-100"
+        className="h-10 w-10 rounded-full border-4 border-slate-200 border-t-red-500 dark:border-slate-700"
       />
     </div>
   );

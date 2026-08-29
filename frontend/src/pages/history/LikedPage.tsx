@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { likeService } from "../../services/like.service";
 import type { Video } from "../../types";
 import { EmptyState } from "../../components/common/EmptyState";
@@ -8,12 +9,17 @@ import { SkeletonBox } from "../../components/common/Loader";
 export function LikedPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchLiked = async () => {
       try {
         const response = await likeService.getLikedVideos();
-        setVideos(response.data || []);
+        setVideos(
+          (response.data || []).filter((video): video is Video =>
+            Boolean(video?._id),
+          ),
+        );
       } catch {
         setVideos([]);
       } finally {
@@ -57,11 +63,17 @@ export function LikedPage() {
               key={video._id}
               className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
             >
-              <img
-                src={video.thumbnail || "https://images.unsplash.com/..."}
-                alt={video.title}
-                className="h-52 w-full object-cover"
-              />
+              <button
+                type="button"
+                onClick={() => navigate(`/watch/${video._id}`)}
+                className="block w-full"
+              >
+                <img
+                  src={video.thumbnail || "https://images.unsplash.com/..."}
+                  alt={video.title}
+                  className="h-52 w-full object-cover"
+                />
+              </button>
               <div className="p-4">
                 <h3 className="line-clamp-2 text-sm font-semibold">
                   {video.title}

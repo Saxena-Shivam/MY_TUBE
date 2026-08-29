@@ -28,20 +28,27 @@ export const videoService = {
     return response.data;
   },
   upload: async (formData: FormData) => {
-    const response = await api.post<ApiResponse<Video>>("/videos", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const response = await api.post<ApiResponse<Video>>("/videos", formData);
     return response.data;
   },
   update: async (videoId: string, payload: FormData) => {
     const response = await api.patch<ApiResponse<Video>>(
       `/videos/${videoId}`,
       payload,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      },
     );
     return response.data;
   },
   delete: async (videoId: string) => api.delete(`/videos/${videoId}`),
+  recordView: async (videoId: string) => {
+    const response = await api.post<ApiResponse<{ views: number }>>(
+      `/videos/view/${videoId}`,
+    );
+    return response.data;
+  },
+  togglePublish: async (videoId: string) => {
+    const response = await api.patch<ApiResponse<Video>>(
+      `/videos/toggle/publish/${videoId}`,
+    );
+    return response.data;
+  },
 };

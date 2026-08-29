@@ -3,12 +3,13 @@ import {
   deleteVideo,
   getAllVideos,
   getVideoById,
+  recordVideoView,
   publishAVideo,
   togglePublishStatus,
   updateVideo,
   getVideosByUsername, // <-- Import the new controller
 } from "../controllers/video.controller.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { optionalJWT, verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { Video } from "../models/video.model.js";
 
@@ -27,7 +28,8 @@ router.get("/trending", async (req, res) => {
       isPublished: true,
     })
       .sort({ views: -1 })
-      .limit(40);
+      .limit(40)
+      .populate("owner", "username fullName avatar");
 
     res.json({ data: trendingVideos });
   } catch (err) {
@@ -39,7 +41,8 @@ router.get("/trending", async (req, res) => {
 router.get("/user/:username", getVideosByUsername);
 
 router.route("/").get(getAllVideos);
-router.route("/:videoId").get(getVideoById);
+router.route("/:videoId").get(optionalJWT, getVideoById);
+router.route("/view/:videoId").post(recordVideoView);
 
 // PROTECTED ROUTES
 router.use(verifyJWT);

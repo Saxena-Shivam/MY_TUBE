@@ -403,7 +403,12 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         isSubscribed: {
           $cond: {
             if: req.user?._id
-              ? { $in: [req.user._id, "$subscribers.subscriber"] }
+              ? {
+                  $in: [
+                    new mongoose.Types.ObjectId(req.user._id),
+                    "$subscribers.subscriber",
+                  ],
+                }
               : false,
             then: true,
             else: false,
@@ -434,6 +439,20 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(200, channel[0], "User channel fetched successfully")
     );
+});
+
+const searchUsers = asyncHandler(async (req, res) => {
+  const query = String(req.query.query || "").trim();
+  if (!query) return res.json(new ApiResponse(200, [], "Users found"));
+  const users = await User.find({
+    $or: [
+      { username: { $regex: query, $options: "i" } },
+      { fullName: { $regex: query, $options: "i" } },
+    ],
+  })
+    .select("username fullName avatar")
+    .limit(10);
+  return res.json(new ApiResponse(200, users, "Users found"));
 });
 
 const getWatchHistory = asyncHandler(async (req, res) => {
@@ -501,5 +520,6 @@ export {
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
+  searchUsers,
   getWatchHistory,
 };

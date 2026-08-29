@@ -1,5 +1,8 @@
 import mongoose, { isValidObjectId } from "mongoose";
 import { Like } from "../models/like.model.js";
+import { Video } from "../models/video.model.js";
+import { Tweet } from "../models/tweet.model.js";
+import { Notification } from "../models/notification.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -14,10 +17,26 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   const existing = await Like.findOne({ video: videoId, likedBy: userId });
   if (existing) {
     await Like.deleteOne({ _id: existing._id });
-    return res.json(new ApiResponse(200, {}, "Video unliked"));
+    const likesCount = await Like.countDocuments({ video: videoId });
+    return res.json(
+      new ApiResponse(200, { liked: false, likesCount }, "Video unliked")
+    );
   } else {
     await Like.create({ video: videoId, likedBy: userId });
-    return res.json(new ApiResponse(201, {}, "Video liked"));
+    const video = await Video.findById(videoId).select("owner title");
+    if (video?.owner && video.owner.toString() !== userId.toString()) {
+      await Notification.create({
+        recipient: video.owner,
+        actor: userId,
+        type: "video-like",
+        video: videoId,
+        message: "liked your video",
+      });
+    }
+    const likesCount = await Like.countDocuments({ video: videoId });
+    return res.json(
+      new ApiResponse(201, { liked: true, likesCount }, "Video liked")
+    );
   }
 });
 
@@ -32,10 +51,16 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
   const existing = await Like.findOne({ comment: commentId, likedBy: userId });
   if (existing) {
     await Like.deleteOne({ _id: existing._id });
-    return res.json(new ApiResponse(200, {}, "Comment unliked"));
+    const likesCount = await Like.countDocuments({ comment: commentId });
+    return res.json(
+      new ApiResponse(200, { liked: false, likesCount }, "Comment unliked")
+    );
   } else {
     await Like.create({ comment: commentId, likedBy: userId });
-    return res.json(new ApiResponse(201, {}, "Comment liked"));
+    const likesCount = await Like.countDocuments({ comment: commentId });
+    return res.json(
+      new ApiResponse(201, { liked: true, likesCount }, "Comment liked")
+    );
   }
 });
 
@@ -49,10 +74,26 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
   const existing = await Like.findOne({ tweet: tweetId, likedBy: userId });
   if (existing) {
     await Like.deleteOne({ _id: existing._id });
-    return res.json(new ApiResponse(200, {}, "Tweet unliked"));
+    const likesCount = await Like.countDocuments({ tweet: tweetId });
+    return res.json(
+      new ApiResponse(200, { liked: false, likesCount }, "Tweet unliked")
+    );
   } else {
     await Like.create({ tweet: tweetId, likedBy: userId });
-    return res.json(new ApiResponse(201, {}, "Tweet liked"));
+    const tweet = await Tweet.findById(tweetId).select("owner");
+    if (tweet?.owner && tweet.owner.toString() !== userId.toString()) {
+      await Notification.create({
+        recipient: tweet.owner,
+        actor: userId,
+        type: "tweet-like",
+        tweet: tweetId,
+        message: "liked your post",
+      });
+    }
+    const likesCount = await Like.countDocuments({ tweet: tweetId });
+    return res.json(
+      new ApiResponse(201, { liked: true, likesCount }, "Tweet liked")
+    );
   }
 });
 
@@ -64,8 +105,13 @@ const getLikedVideos = asyncHandler(async (req, res) => {
   const likes = await Like.find({
     likedBy: userId,
     video: { $exists: true },
-  }).populate("video");
-  const videos = likes.map((like) => like.video);
+  }).populate({
+    path: "video",
+    populate: { path: "owner", select: "username fullName avatar" },
+  });
+  const videos = likes
+    .map((like) => like.video)
+    .filter((video) => video !== null && video !== undefined);
 
   res.json(new ApiResponse(200, videos, "Liked videos fetched successfully"));
 });

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import api from "../api/axios";
+import api, { setStoredToken } from "../api/axios";
 import type { ApiResponse, AuthResponse, User } from "../types";
 
 type AuthContextValue = {
@@ -28,44 +28,44 @@ type AuthContextValue = {
   }) => Promise<User>;
   updateAvatar: (file: File) => Promise<User>;
   updateCoverImage: (file: File) => Promise<User>;
+  changePassword: (payload: {
+    oldPassword: string;
+    newPassword: string;
+  }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function persistUser(user: User | null) {
+  if (user) localStorage.setItem("mytube-user", JSON.stringify(user));
+  else localStorage.removeItem("mytube-user");
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const loadPersistedUser = () => {
-    try {
-      const raw = localStorage.getItem("mytube-user");
-      if (raw) {
-        setUser(JSON.parse(raw) as User);
-      }
-    } catch {
-      localStorage.removeItem("mytube-user");
-    }
-  };
 
   const refreshUser = async () => {
     try {
       const res = await api.get<ApiResponse<User>>("/users/current-user");
       const nextUser = res.data.data;
       setUser(nextUser);
-      localStorage.setItem("mytube-user", JSON.stringify(nextUser));
+      persistUser(nextUser);
     } catch {
       setUser(null);
-      localStorage.removeItem("mytube-user");
+      persistUser(null);
+      setStoredToken(null);
     }
   };
 
   useEffect(() => {
-    loadPersistedUser();
-    const persistedUser = localStorage.getItem("mytube-user");
-    if (!persistedUser) {
-      setLoading(false);
-      return;
+    try {
+      const raw = localStorage.getItem("mytube-user");
+      if (raw) setUser(JSON.parse(raw) as User);
+    } catch {
+      persistUser(null);
     }
+
     void refreshUser().finally(() => setLoading(false));
   }, []);
 
@@ -78,9 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       "/users/login",
       payload,
     );
-    const nextUser = response.data.data.user;
+    const { user: nextUser, accessToken } = response.data.data;
+    setStoredToken(accessToken);
     setUser(nextUser);
-    localStorage.setItem("mytube-user", JSON.stringify(nextUser));
+    persistUser(nextUser);
     return nextUser;
   };
 
@@ -100,18 +101,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (payload.avatar) formData.append("avatar", payload.avatar);
     if (payload.coverImage) formData.append("coverImage", payload.coverImage);
 
-    const response = await api.post<ApiResponse<User>>(
-      "/users/register",
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      },
-    );
-
-    const nextUser = response.data.data;
-    setUser(nextUser);
-    localStorage.setItem("mytube-user", JSON.stringify(nextUser));
-    return nextUser;
+    await api.post<ApiResponse<User>>("/users/register", formData);
+    return login({
+      email: payload.email,
+      username: payload.username,
+      password: payload.password,
+    });
   };
 
   const logout = async () => {
@@ -119,7 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api.post("/users/logout");
     } finally {
       setUser(null);
-      localStorage.removeItem("mytube-user");
+      persistUser(null);
+      setStoredToken(null);
     }
   };
 
@@ -133,19 +129,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     const nextUser = response.data.data;
     setUser(nextUser);
-    localStorage.setItem("mytube-user", JSON.stringify(nextUser));
+    persistUser(nextUser);
     return nextUser;
   };
 
   const updateImage = async (endpoint: string, field: string, file: File) => {
     const formData = new FormData();
     formData.append(field, file);
-    const response = await api.patch<ApiResponse<User>>(endpoint, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const response = await api.patch<ApiResponse<User>>(endpoint, formData);
     const nextUser = response.data.data;
     setUser(nextUser);
-    localStorage.setItem("mytube-user", JSON.stringify(nextUser));
+    persistUser(nextUser);
     return nextUser;
   };
 
@@ -153,6 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateImage("/users/avatar", "avatar", file);
   const updateCoverImage = (file: File) =>
     updateImage("/users/cover-image", "coverImage", file);
+
+  const changePassword = async (payload: {
+    oldPassword: string;
+    newPassword: string;
+  }) => {
+    await api.post("/users/change-password", payload);
+  };
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -166,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateAccount,
       updateAvatar,
       updateCoverImage,
+      changePassword,
     }),
     [user, loading],
   );

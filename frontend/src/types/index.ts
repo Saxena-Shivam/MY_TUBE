@@ -9,10 +9,12 @@ export type User = {
   _id: string;
   fullName: string;
   username: string;
-  email: string;
+  email?: string;
   avatar: string;
   coverImage?: string;
-  refreshToken?: string;
+  subscribersCount?: number;
+  channelsSubscribedToCount?: number;
+  isSubscribed?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -30,15 +32,24 @@ export type Video = {
   views?: number;
   owner?: User | string;
   isPublished?: boolean;
+  likesCount?: number;
+  isLiked?: boolean;
+  subscribersCount?: number;
+  isSubscribed?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  tags?: string[];
 };
 
 export type Comment = {
   _id: string;
   content: string;
   video?: string;
+  tweet?: string;
+  parent?: string | null;
   owner?: User;
+  likesCount?: number;
+  isLiked?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -47,7 +58,7 @@ export type Playlist = {
   _id: string;
   name: string;
   description?: string;
-  videos: Video[] | string[];
+  videos: Array<Video | string>;
   owner?: User | string;
   createdAt?: string;
   updatedAt?: string;
@@ -57,6 +68,9 @@ export type Tweet = {
   _id: string;
   content: string;
   owner?: User | string;
+  likesCount?: number;
+  isLiked?: boolean;
+  commentsCount?: number;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -69,8 +83,15 @@ export type Subscription = {
   updatedAt?: string;
 };
 
-export type WatchHistoryItem = Video & {
-  watchedAt?: string;
+export type Notification = {
+  _id: string;
+  actor?: User;
+  type: string;
+  message: string;
+  video?: string;
+  tweet?: string;
+  read: boolean;
+  createdAt?: string;
 };
 
 export type AuthResponse = {

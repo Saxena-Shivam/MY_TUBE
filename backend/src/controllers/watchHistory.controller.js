@@ -17,13 +17,29 @@ export const addToWatchHistory = async (req, res) => {
   }
 };
 
+export const removeFromWatchHistory = async (req, res) => {
+  await WatchHistory.deleteOne({
+    user: req.user._id,
+    video: req.params.videoId,
+  });
+  res.json({ message: "Removed from watch history" });
+};
+
+export const clearWatchHistory = async (req, res) => {
+  await WatchHistory.deleteMany({ user: req.user._id });
+  res.json({ message: "Watch history cleared" });
+};
+
 export const getWatchHistory = async (req, res) => {
   const userId = req.user._id;
   try {
     const history = await WatchHistory.find({ user: userId })
       .sort({ watchedAt: -1 })
-      .populate("video");
-    res.json({ data: history.map((h) => h.video) });
+      .populate({
+        path: "video",
+        populate: { path: "owner", select: "username fullName avatar" },
+      });
+    res.json({ data: history.map((h) => h.video).filter(Boolean) });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch watch history" });
   }

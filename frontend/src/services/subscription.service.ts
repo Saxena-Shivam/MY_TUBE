@@ -1,5 +1,5 @@
 import api from "../api/axios";
-import type { ApiResponse, User } from "../types";
+import type { ApiResponse, Subscription, User } from "../types";
 
 export const subscriptionService = {
   getMySubscriptions: async () => {
@@ -12,9 +12,15 @@ export const subscriptionService = {
     );
     return response.data;
   },
-  getByChannel: async (channelId: string) => {
-    const response = await api.get<ApiResponse<unknown[]>>(
+  getSubscribers: async (channelId: string) => {
+    const response = await api.get<ApiResponse<Subscription[]>>(
       `/subscriptions/u/${channelId}`,
+    );
+    return response.data;
+  },
+  getSubscribedChannels: async (subscriberId: string) => {
+    const response = await api.get<ApiResponse<Subscription[]>>(
+      `/subscriptions/c/${subscriberId}`,
     );
     return response.data;
   },

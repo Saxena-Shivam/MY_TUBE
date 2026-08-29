@@ -17,9 +17,6 @@ export const authService = {
     const response = await api.post<ApiResponse<User>>(
       "/users/register",
       formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      },
     );
     return response.data;
   },
@@ -29,4 +26,19 @@ export const authService = {
     return response.data;
   },
   refreshToken: async () => api.post("/users/refresh-token"),
+  getChannel: async (username: string) => {
+    const response = await api.get<ApiResponse<User>>(`/users/c/${username}`);
+    return response.data;
+  },
+  updateAccount: async (payload: { fullName: string; email: string }) => {
+    const response = await api.patch<ApiResponse<User>>(
+      "/users/update-account",
+      payload,
+    );
+    return response.data;
+  },
+  changePassword: async (payload: {
+    oldPassword: string;
+    newPassword: string;
+  }) => api.post("/users/change-password", payload),
 };
