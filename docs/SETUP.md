@@ -77,6 +77,29 @@ npm run dev
 
 Open `http://localhost:5173`.
 
+## Production deployment checklist
+
+Recommended split deployment: deploy `backend/` as a Node service and `frontend/` as a static Vite site.
+
+Backend service:
+
+- Root directory: `backend`.
+- Build command: `npm install`.
+- Start command: `npm start`.
+- Add all backend environment variables from the Environment section in the hosting provider dashboard.
+- Set `CORS_ORIGIN` to the exact deployed frontend URL.
+- Use a hosted MongoDB connection string and production Cloudinary credentials.
+
+Frontend site:
+
+- Root directory: `frontend`.
+- Build command: `npm run build`.
+- Output directory: `dist`.
+- Add `VITE_API_URL=https://your-backend-domain/api/v1`.
+- Configure SPA fallback so all routes serve `index.html`.
+
+Deploy the backend first, verify `/api/v1/healthcheck`, then set the resulting backend URL in the frontend environment and deploy the frontend.
+
 ## Validation
 
 ```powershell
